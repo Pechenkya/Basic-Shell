@@ -1,0 +1,5 @@
+
+path /usr/bin /bin
+echo hello
+
+exit asljgsd saglh

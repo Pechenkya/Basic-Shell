@@ -27,6 +27,35 @@ void free_allocated(char* PATH[], char* buff)
   clear_path(PATH);
 }
 
+FILE* check_for_redirection(char* input)
+{
+  char* red_begin = strchr(input, '>');
+  char* tmp_buff = NULL;
+  char* file_name = NULL;
+    if(red_begin == NULL)
+    {
+      return stdout;
+    }
+    else
+    {
+      *red_begin = '\0';
+      red_begin++;
+      do
+      {
+        tmp_buff = strsep(&red_begin, " ");
+        if(tmp_buff != NULL && strcmp(tmp_buff, ""))
+        {
+          if(file_name)     // IF filename already found -> too much parameters
+            return NULL;
+          else
+            file_name = tmp_buff;
+        }
+      } while (tmp_buff != NULL);
+      
+      return fopen(file_name, "w");
+    }
+}
+
 int check_and_exec_buildin(int argc, char* argv[], 
       char* PATH[], FILE* fl, char *buff_begin)
 {
@@ -77,7 +106,8 @@ int check_and_exec_buildin(int argc, char* argv[],
   return 0;
 } 
 
-void execute_cmd(int argc, char* argv[], char* PATH[], char *buff_begin)
+void execute_cmd(int argc, char* argv[], 
+      char* PATH[], FILE* OUTPUT, char *buff_begin)
 {
   // First -- we fork process
   int child_proccess = fork();
@@ -85,6 +115,14 @@ void execute_cmd(int argc, char* argv[], char* PATH[], char *buff_begin)
   if(child_proccess == 0)
   {
     // Executing process on new thread
+    // Redirecting output if needed
+    if(OUTPUT != stdout)
+    {
+      int file = fileno(OUTPUT);
+      dup2(file, STDOUT_FILENO);    // standart out
+      dup2(file, STDERR_FILENO);    // standart error
+    } 
+
     // Find first path with existing command and execute it
     char dest[256];
     dest[0] = '\0';
@@ -104,7 +142,7 @@ void execute_cmd(int argc, char* argv[], char* PATH[], char *buff_begin)
     }
     fprintf(stderr, "No such command %s found in PATH\n", argv[0]);
 
-    //free_allocated(PATH, buff_begin);
+    free_allocated(PATH, buff_begin);
     exit(0);
   } 
   else if(child_proccess > 0)
@@ -146,6 +184,11 @@ int main(int argc, char *argv[]) {
 
       printf("wish> ");
       input_sz = getline(&input, &len, stdin);
+
+      // Empty line handling //
+      if(input[0] == '\n')
+        continue;
+
       input[input_sz - 1] = '\0';
 
       // Removing tabulations //
@@ -153,7 +196,17 @@ int main(int argc, char *argv[]) {
         if(input[i] == '\t')
           input[i] = ' ';
 
-      // Checking
+      // Checking for redirection //
+      OUTPUT = check_for_redirection(input);
+      if(OUTPUT == NULL)    // Error while processing filename
+      {
+        OUTPUT = stdout;
+        fprintf(stderr, "Error with redirection\n");
+        free(input);
+        input = NULL;
+        continue;
+      }
+    
 
       // Parsing input // 
       parse_token = input;
@@ -168,9 +221,15 @@ int main(int argc, char *argv[]) {
       // Executing commant and free input //
       if(!check_and_exec_buildin(argsc, argsv, PATH, NULL, input))
       {
-        execute_cmd(argsc, argsv, PATH, input);
+        execute_cmd(argsc, argsv, PATH, OUTPUT, input);
       }
       
+      if(OUTPUT != stdout)
+      {
+        fclose(OUTPUT);
+        OUTPUT = stdout;
+      }
+
       free(input);
       input = NULL;
     }
@@ -186,15 +245,17 @@ int main(int argc, char *argv[]) {
     while(!feof(file))
     {
       argsc = 0;
-
       input_sz = getline(&input, &len, file);
-      input[input_sz - 1] = '\0';
+      // Empty line handling //
+      if(input_sz == -1 || input[0] == '\n')
+        continue;
 
       // Removing tabulations //
       for(int i = 0; i < input_sz; ++i)
-        if(input[i] == '\t')
+        if(input[i] == '\t' || input[i] == '\n')
           input[i] = ' ';
 
+      
       // Parsing input // 
       parse_token = input;
       do
@@ -204,17 +265,17 @@ int main(int argc, char *argv[]) {
           argsv[argsc++] = arg_buff;
       } while (argsc == 0 || argsv[argsc - 1] != NULL);
       argsc--;  // NULL is not a parameter
-      
+
       // Executing commant and free input //
       if(!check_and_exec_buildin(argsc, argsv, PATH, file, input))
       {
-        execute_cmd(argsc, argsv, PATH, input);
+        execute_cmd(argsc, argsv, PATH, OUTPUT, input);
       }
 
       free(input);
       input = NULL;
     }
-
+    clear_path(PATH);
     fclose(file);
   }
   else
