@@ -214,13 +214,13 @@ int main(int argc, char *argv[]) {
         parse_token[cmd_count] = strchr(parse_token[cmd_count - 1], '&');
         if(parse_token[cmd_count] != NULL)
         {
-            argsc[cmd_count] = 0;
-            parse_token[cmd_count][0] = '\0';
-            parse_token[cmd_count]++;   // Cutting off the token
-            cmd_count++;
+          argsc[cmd_count] = 0;
+          parse_token[cmd_count][0] = '\0';
+          parse_token[cmd_count]++;   // Cutting off the token
+          cmd_count++;
         }
         else
-            break;
+          break;
       } while (1);
       
       
@@ -232,9 +232,6 @@ int main(int argc, char *argv[]) {
         if(OUTPUT[i] == NULL)    // Error while processing filename
         { 
           OUTPUT[i] = stdout;
-          fprintf(stderr, "Error with redirection\n");
-          free(input);
-          input = NULL;
           bad_parse = 1;
           break;
         }
@@ -242,15 +239,20 @@ int main(int argc, char *argv[]) {
         // Parsing input // 
         do
         {
-            arg_buff = strsep(&parse_token[i], " ");
-            if(arg_buff == NULL || strcmp(arg_buff, ""))
-            argsv[i][argsc[i]++] = arg_buff;
+          arg_buff = strsep(&parse_token[i], " ");
+          if(arg_buff == NULL || strcmp(arg_buff, ""))
+          argsv[i][argsc[i]++] = arg_buff;
         } while (argsc[i] == 0 || argsv[i][argsc[i] - 1] != NULL);
         argsc[i]--;  // NULL is not a parameter
       }
       
       if(bad_parse)
+      {
+        fprintf(stderr, "Error with redirection\n");
+        free(input);
+        input = NULL;
         continue;
+      }
       
       // Executing commant and free input //
       if(!check_and_exec_buildin(argsc[0], argsv[0], PATH, NULL, input))
@@ -258,6 +260,7 @@ int main(int argc, char *argv[]) {
         execute_cmd(cmd_count, argsv, PATH, OUTPUT, input);
       }
       
+      // Clearing data
       for(int i = 0; i < cmd_count; ++i)
       {
         if(OUTPUT[i] != stdout)
@@ -273,47 +276,93 @@ int main(int argc, char *argv[]) {
   }
   else if(argc == BATCH_MODE)  // Batch mode -> 2
   {
-    // FILE* file = fopen(argv[1], "r");
-    // if(!file)
-    // {
-    //   exit(1);
-    // }
+    FILE* file = fopen(argv[1], "r");
+    if(!file)
+    {
+      exit(1);
+    }
 
-    // while(!feof(file))
-    // {
-    //   argsc = 0;
-    //   input_sz = getline(&input, &len, file);
-    //   // Empty line handling //
-    //   if(input_sz == -1 || input[0] == '\n')
-    //     continue;
+    while(!feof(file))
+    {
+      input_sz = getline(&input, &len, file);
+      // Empty line handling //
+      if(input_sz == -1 || input[0] == '\n')
+        continue;
 
-    //   // Removing tabulations //
-    //   for(int i = 0; i < input_sz; ++i)
-    //     if(input[i] == '\t' || input[i] == '\n')
-    //       input[i] = ' ';
+      // Removing tabulations //
+      for(int i = 0; i < input_sz; ++i)
+        if(input[i] == '\t' || input[i] == '\n')
+          input[i] = ' ';
 
+      // Count and setup parallel commands
+      parse_token[0] = input;
+      argsc[0] = 0;
+      do
+      {
+        parse_token[cmd_count] = strchr(parse_token[cmd_count - 1], '&');
+        if(parse_token[cmd_count] != NULL)
+        {
+          argsc[cmd_count] = 0;
+          parse_token[cmd_count][0] = '\0';
+          parse_token[cmd_count]++;   // Cutting off the token
+          cmd_count++;
+        }
+        else
+          break;
+      } while (1);
       
-    //   // Parsing input // 
-    //   parse_token = input;
-    //   do
-    //   {
-    //     arg_buff = strsep(&parse_token, " ");
-    //     if(arg_buff == NULL || strcmp(arg_buff, ""))
-    //       argsv[argsc++] = arg_buff;
-    //   } while (argsc == 0 || argsv[argsc - 1] != NULL);
-    //   argsc--;  // NULL is not a parameter
+      
+      int bad_parse = 0;
+      for(int i = 0; i < cmd_count; ++i)
+      {
+        // Checking for redirection //
+        OUTPUT[i] = check_for_redirection(input);
+        if(OUTPUT[i] == NULL)    // Error while processing filename
+        { 
+          OUTPUT[i] = stdout;
+          bad_parse = 1;
+          break;
+        }
 
-    //   // Executing commant and free input //
-    //   if(!check_and_exec_buildin(argsc, argsv, PATH, file, input))
-    //   {
-    //     execute_cmd(cmd_count, argsv, PATH, OUTPUT, input);
-    //   }
+        // Parsing input // 
+        do
+        {
+          arg_buff = strsep(&parse_token[i], " ");
+          if(arg_buff == NULL || strcmp(arg_buff, ""))
+          argsv[i][argsc[i]++] = arg_buff;
+        } while (argsc[i] == 0 || argsv[i][argsc[i] - 1] != NULL);
+        argsc[i]--;  // NULL is not a parameter
+      }
 
-    //   free(input);
-    //   input = NULL;
-    // }
-    // clear_path(PATH);
-    // fclose(file);
+      if(bad_parse)
+      {
+        fprintf(stderr, "Error with redirection\n");
+        free(input);
+        input = NULL;
+        continue;
+      }
+
+      // Executing commant and free input //
+      if(!check_and_exec_buildin(argsc[0], argsv[0], PATH, file, input))
+      {
+        execute_cmd(cmd_count, argsv, PATH, OUTPUT, input);
+      }
+
+      // Clearing data
+      for(int i = 0; i < cmd_count; ++i)
+      {
+        if(OUTPUT[i] != stdout)
+        {
+            fclose(OUTPUT[i]);
+            OUTPUT[i] = stdout;
+        }
+      }
+      cmd_count = 1;
+      free(input);
+      input = NULL;
+    }
+    clear_path(PATH);
+    fclose(file);
   }
   else
   {

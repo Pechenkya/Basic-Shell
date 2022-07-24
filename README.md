@@ -35,3 +35,7 @@ gcc -o wish wish.c
 gcc -o wish wish.c
 ./wish batch.txt
 ```
+
+#### REMARKS
+
+1. Build-In commands cannot be run in parallel mode!
