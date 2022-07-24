@@ -241,8 +241,15 @@ int main(int argc, char *argv[]) {
         {
           arg_buff = strsep(&parse_token[i], " ");
           if(arg_buff == NULL || strcmp(arg_buff, ""))
-          argsv[i][argsc[i]++] = arg_buff;
+            argsv[i][argsc[i]++] = arg_buff;
         } while (argsc[i] == 0 || argsv[i][argsc[i] - 1] != NULL);
+
+        // Empty args == no commands
+        if(argsv[i][0] == NULL)
+        {
+          bad_parse = 1;
+          break;
+        }
         argsc[i]--;  // NULL is not a parameter
       }
       
@@ -331,6 +338,14 @@ int main(int argc, char *argv[]) {
           if(arg_buff == NULL || strcmp(arg_buff, ""))
           argsv[i][argsc[i]++] = arg_buff;
         } while (argsc[i] == 0 || argsv[i][argsc[i] - 1] != NULL);
+
+        // Empty args == no commands
+        if(argsv[i][0] == NULL)
+        {
+          bad_parse = 1;
+          break;
+        }
+
         argsc[i]--;  // NULL is not a parameter
       }
 
