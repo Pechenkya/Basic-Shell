@@ -193,21 +193,38 @@ int main(int argc, char *argv[]) {
     while(1)
     {
       printf("wish> ");
-      input_sz = getline(&input, &len, stdin);
+      input_sz = getline(&input, &len, stdin) - 1;
 
       // Empty line handling //
       if(input[0] == '\n')
         continue;
-      input[input_sz - 1] = '\0';
+      input[input_sz] = '\0';
 
       // Removing tabulations //
       for(int i = 0; i < input_sz; ++i)
         if(input[i] == '\t')
           input[i] = ' ';
 
+      // Find for first symbol (not whitespace)
+      parse_token[0] = NULL;
+      for(int i = 0; i < input_sz; ++i)
+      {
+        if(input[i] != ' ')
+        {
+          parse_token[0] = &input[i];
+          break;
+        }
+      }
+
+      if(!parse_token[0])
+      {
+        free(input);
+        input = NULL;
+        continue;
+      }
+      //
       
       // Count and setup parallel commands
-      parse_token[0] = input;
       argsc[0] = 0;
       do
       {
@@ -291,7 +308,7 @@ int main(int argc, char *argv[]) {
 
     while(!feof(file))
     {
-      input_sz = getline(&input, &len, file);
+      input_sz = getline(&input, &len, file) - 1;
       // Empty line handling //
       if(input_sz == -1 || input[0] == '\n')
         continue;
@@ -301,8 +318,26 @@ int main(int argc, char *argv[]) {
         if(input[i] == '\t' || input[i] == '\n')
           input[i] = ' ';
 
+      // Find for first symbol (not whitespace)
+      parse_token[0] = NULL;
+      for(int i = 0; i < input_sz; ++i)
+      {
+        if(input[i] != ' ')
+        {
+          parse_token[0] = &input[i];
+          break;
+        }
+      }
+
+      if(!parse_token[0])
+      {
+        free(input);
+        input = NULL;
+        continue;
+      }
+      //
+
       // Count and setup parallel commands
-      parse_token[0] = input;
       argsc[0] = 0;
       do
       {
