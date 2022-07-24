@@ -14,11 +14,11 @@ void print_error()
 
 void clear_path(char* PATH[])
 {
-  for(int i = 1; PATH[i] != NULL; ++i)
+  for(int i = 2; PATH[i] != NULL; ++i)
   {
     free(PATH[i]);
   }
-  PATH[1] = NULL;
+  PATH[2] = NULL;
 }
 
 void free_allocated(char* PATH[], char* buff)
@@ -88,16 +88,16 @@ int check_and_exec_buildin(int argc, char* argv[],
   {
     clear_path(PATH);
     if(argc == 1)
-      PATH[1] = NULL;
+      PATH[2] = NULL;
     else
     {
       for(int i = 1; i < argc; ++i)
       {
         // PATH[i - 1] <- argv[i] //
-        PATH[i] = (char *) malloc(strlen(argv[i]));
-        strcpy(PATH[i], argv[i]);
+        PATH[i + 1] = (char *) malloc(strlen(argv[i]));
+        strcpy(PATH[i + 1], argv[i]);
       }
-      PATH[argc] = NULL;
+      PATH[argc + 1] = NULL;
     }
 
     return 1;  
@@ -171,7 +171,8 @@ int main(int argc, char *argv[]) {
   // System parameters
   char *PATH[32];
   PATH[0] = "";
-  PATH[1] = NULL;
+  PATH[1] = "/bin";
+  PATH[2] = NULL;
 
   FILE* OUTPUT = stdout;
   //
