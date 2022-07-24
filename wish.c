@@ -63,7 +63,7 @@ int check_and_exec_buildin(int argc, char* argv[],
   if(!strcmp(argv[0], "exit"))
   {
     if(argc > 1)
-      fprintf(stderr, "Error: exit must have no parameters\n");
+      print_error();
     else
     {
       if(fl != NULL)
@@ -78,9 +78,9 @@ int check_and_exec_buildin(int argc, char* argv[],
   else if(!strcmp(argv[0], "cd"))
   {
     if(argc != 2)
-      fprintf(stderr, "cd must have one parameter\n");
+      print_error();
     else if(chdir(argv[1]))
-      fprintf(stderr, "No such directory: %s\n", argv[1]);
+      print_error();
     
     return 1;
   }
@@ -142,7 +142,7 @@ void execute_cmd(short cmd_count, char* argv[16][64],
             execv(dest, argv[i]);
           //
         }
-        fprintf(stderr, "No such command %s found in PATH\n", argv[i][0]);
+        print_error();
 
         free_allocated(PATH, buff_begin);
         exit(0);
@@ -153,7 +153,7 @@ void execute_cmd(short cmd_count, char* argv[16][64],
     }
     else
     {
-        fprintf(stderr, "Error while starting new proccess from %d\n", getpid());
+      print_error();
     }
   }
   
@@ -248,7 +248,7 @@ int main(int argc, char *argv[]) {
       
       if(bad_parse)
       {
-        fprintf(stderr, "Error with redirection\n");
+        print_error();
         free(input);
         input = NULL;
         continue;
@@ -336,7 +336,7 @@ int main(int argc, char *argv[]) {
 
       if(bad_parse)
       {
-        fprintf(stderr, "Error with redirection\n");
+        print_error();
         free(input);
         input = NULL;
         continue;
