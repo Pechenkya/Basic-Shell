@@ -106,65 +106,76 @@ int check_and_exec_buildin(int argc, char* argv[],
   return 0;
 } 
 
-void execute_cmd(int argc, char* argv[], 
-      char* PATH[], FILE* OUTPUT, char *buff_begin)
+void execute_cmd(short cmd_count, char* argv[16][64], 
+      char* PATH[], FILE* OUTPUT[], char *buff_begin)
 {
-  // First -- we fork process
-  int child_proccess = fork();
-
-  if(child_proccess == 0)
+  int status = 0;
+  pid_t pid, wpid;
+  for(short i = 0; i < cmd_count; ++i)
   {
-    // Executing process on new thread
-    // Redirecting output if needed
-    if(OUTPUT != stdout)
+    // First -- we fork process
+    if((pid = fork()) == 0)
     {
-      int file = fileno(OUTPUT);
-      dup2(file, STDOUT_FILENO);    // standart out
-      dup2(file, STDERR_FILENO);    // standart error
+        // Executing process on new thread
+        // Redirecting output if needed
+        if(OUTPUT[i] != stdout)
+        {
+          int file = fileno(OUTPUT[i]);
+          dup2(file, STDOUT_FILENO);    // standart out
+          dup2(file, STDERR_FILENO);    // standart error
+        } 
+
+        // Find first path with existing command and execute it
+        char dest[256];
+        dest[0] = '\0';
+        for(int j = 0; PATH[j] != NULL; ++j)
+        {
+          // Building path
+          dest[0] = '\0';
+          strcat(dest, PATH[j]);
+          strcat(dest, "/");
+          strcat(dest, argv[i][0]);
+          //
+
+          // Executing command on first found path
+          if(!access(dest, X_OK))
+            execv(dest, argv[i]);
+          //
+        }
+        fprintf(stderr, "No such command %s found in PATH\n", argv[i][0]);
+
+        free_allocated(PATH, buff_begin);
+        exit(0);
     } 
-
-    // Find first path with existing command and execute it
-    char dest[256];
-    dest[0] = '\0';
-    for(int i = 0; PATH[i] != NULL; ++i)
+    else if(pid > 0)
     {
-      // Building path
-      dest[0] = '\0';
-      strcat(dest, PATH[i]);
-      strcat(dest, "/");
-      strcat(dest, argv[0]);
-      //
-
-      // Executing command on first found path
-      if(!access(dest, X_OK))
-        execv(dest, argv);
-      //
+       continue;
     }
-    fprintf(stderr, "No such command %s found in PATH\n", argv[0]);
-
-    free_allocated(PATH, buff_begin);
-    exit(0);
-  } 
-  else if(child_proccess > 0)
-  {
-    // Wait for process to complete
-    wait(NULL);
+    else
+    {
+        fprintf(stderr, "Error while starting new proccess from %d\n", getpid());
+    }
   }
-  else
-  {
-    fprintf(stderr, "Error while starting new proccess from %d\n", getpid());
-  }
+  
+  // Wait for all shild processes to end
+  while((wpid = wait(&status)) > 0);
+  //
 }
 
 
 int main(int argc, char *argv[]) {
   // Input handling //
   char *input = NULL;
-  char *parse_token = NULL;
   size_t len = 0;
-  ssize_t input_sz = 0;
-  int argsc;
-  char *argsv[255];
+  size_t input_sz = 0;
+  //
+  
+  // Parsing stuff
+  short cmd_count = 1;
+  char *parse_token[16];
+  parse_token[0] = NULL;
+  int argsc[16];
+  char *argsv[16][64];
   char *arg_buff = NULL;
   //
 
@@ -174,22 +185,19 @@ int main(int argc, char *argv[]) {
   PATH[1] = "/bin";
   PATH[2] = NULL;
 
-  FILE* OUTPUT = stdout;
+  FILE* OUTPUT[16];
   //
 
   if(argc == INTERACTIVE_MODE)   // Interactive mode -> 1
   {
     while(1)
     {
-      argsc = 0;
-
       printf("wish> ");
       input_sz = getline(&input, &len, stdin);
 
       // Empty line handling //
       if(input[0] == '\n')
         continue;
-
       input[input_sz - 1] = '\0';
 
       // Removing tabulations //
@@ -197,40 +205,71 @@ int main(int argc, char *argv[]) {
         if(input[i] == '\t')
           input[i] = ' ';
 
-      // Checking for redirection //
-      OUTPUT = check_for_redirection(input);
-      if(OUTPUT == NULL)    // Error while processing filename
+      
+      // Count and setup parallel commands
+      parse_token[0] = input;
+      argsc[0] = 0;
+      do
       {
-        OUTPUT = stdout;
+        parse_token[cmd_count] = strchr(parse_token[cmd_count - 1], '&');
+        if(parse_token[cmd_count] != NULL)
+        {
+          argsc[cmd_count] = 0;
+          parse_token[cmd_count][0] = '\0';
+          parse_token[cmd_count]++;   // Cutting off the token
+          cmd_count++;
+        }
+        else
+          break;
+      } while (1);
+      
+      
+      int bad_parse = 0;
+      for(int i = 0; i < cmd_count; ++i)
+      {
+        // Checking for redirection //
+        OUTPUT[i] = check_for_redirection(input);
+        if(OUTPUT[i] == NULL)    // Error while processing filename
+        { 
+          OUTPUT[i] = stdout;
+          bad_parse = 1;
+          break;
+        }
+
+        // Parsing input // 
+        do
+        {
+          arg_buff = strsep(&parse_token[i], " ");
+          if(arg_buff == NULL || strcmp(arg_buff, ""))
+          argsv[i][argsc[i]++] = arg_buff;
+        } while (argsc[i] == 0 || argsv[i][argsc[i] - 1] != NULL);
+        argsc[i]--;  // NULL is not a parameter
+      }
+      
+      if(bad_parse)
+      {
         fprintf(stderr, "Error with redirection\n");
         free(input);
         input = NULL;
         continue;
       }
-    
-
-      // Parsing input // 
-      parse_token = input;
-      do
-      {
-        arg_buff = strsep(&parse_token, " ");
-        if(arg_buff == NULL || strcmp(arg_buff, ""))
-          argsv[argsc++] = arg_buff;
-      } while (argsc == 0 || argsv[argsc - 1] != NULL);
-      argsc--;  // NULL is not a parameter
       
       // Executing commant and free input //
-      if(!check_and_exec_buildin(argsc, argsv, PATH, NULL, input))
+      if(!check_and_exec_buildin(argsc[0], argsv[0], PATH, NULL, input))
       {
-        execute_cmd(argsc, argsv, PATH, OUTPUT, input);
+        execute_cmd(cmd_count, argsv, PATH, OUTPUT, input);
       }
       
-      if(OUTPUT != stdout)
+      // Clearing data
+      for(int i = 0; i < cmd_count; ++i)
       {
-        fclose(OUTPUT);
-        OUTPUT = stdout;
+        if(OUTPUT[i] != stdout)
+        {
+            fclose(OUTPUT[i]);
+            OUTPUT[i] = stdout;
+        }
       }
-
+      cmd_count = 1;
       free(input);
       input = NULL;
     }
@@ -245,7 +284,6 @@ int main(int argc, char *argv[]) {
 
     while(!feof(file))
     {
-      argsc = 0;
       input_sz = getline(&input, &len, file);
       // Empty line handling //
       if(input_sz == -1 || input[0] == '\n')
@@ -256,23 +294,70 @@ int main(int argc, char *argv[]) {
         if(input[i] == '\t' || input[i] == '\n')
           input[i] = ' ';
 
-      
-      // Parsing input // 
-      parse_token = input;
+      // Count and setup parallel commands
+      parse_token[0] = input;
+      argsc[0] = 0;
       do
       {
-        arg_buff = strsep(&parse_token, " ");
-        if(arg_buff == NULL || strcmp(arg_buff, ""))
-          argsv[argsc++] = arg_buff;
-      } while (argsc == 0 || argsv[argsc - 1] != NULL);
-      argsc--;  // NULL is not a parameter
-
-      // Executing commant and free input //
-      if(!check_and_exec_buildin(argsc, argsv, PATH, file, input))
+        parse_token[cmd_count] = strchr(parse_token[cmd_count - 1], '&');
+        if(parse_token[cmd_count] != NULL)
+        {
+          argsc[cmd_count] = 0;
+          parse_token[cmd_count][0] = '\0';
+          parse_token[cmd_count]++;   // Cutting off the token
+          cmd_count++;
+        }
+        else
+          break;
+      } while (1);
+      
+      
+      int bad_parse = 0;
+      for(int i = 0; i < cmd_count; ++i)
       {
-        execute_cmd(argsc, argsv, PATH, OUTPUT, input);
+        // Checking for redirection //
+        OUTPUT[i] = check_for_redirection(input);
+        if(OUTPUT[i] == NULL)    // Error while processing filename
+        { 
+          OUTPUT[i] = stdout;
+          bad_parse = 1;
+          break;
+        }
+
+        // Parsing input // 
+        do
+        {
+          arg_buff = strsep(&parse_token[i], " ");
+          if(arg_buff == NULL || strcmp(arg_buff, ""))
+          argsv[i][argsc[i]++] = arg_buff;
+        } while (argsc[i] == 0 || argsv[i][argsc[i] - 1] != NULL);
+        argsc[i]--;  // NULL is not a parameter
       }
 
+      if(bad_parse)
+      {
+        fprintf(stderr, "Error with redirection\n");
+        free(input);
+        input = NULL;
+        continue;
+      }
+
+      // Executing commant and free input //
+      if(!check_and_exec_buildin(argsc[0], argsv[0], PATH, file, input))
+      {
+        execute_cmd(cmd_count, argsv, PATH, OUTPUT, input);
+      }
+
+      // Clearing data
+      for(int i = 0; i < cmd_count; ++i)
+      {
+        if(OUTPUT[i] != stdout)
+        {
+            fclose(OUTPUT[i]);
+            OUTPUT[i] = stdout;
+        }
+      }
+      cmd_count = 1;
       free(input);
       input = NULL;
     }
