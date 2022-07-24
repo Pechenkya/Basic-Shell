@@ -14,6 +14,7 @@
 #define BATCH_MODE 2
 #define BUFF_SIZE 256
 
+/*
 struct function_args {
   pthread_t thread;
   char *command;
@@ -35,3 +36,4 @@ void executeCommands(char *args[], int args_num, FILE *out);
 char *trim(char *);
 
 void clean(void);
+*/

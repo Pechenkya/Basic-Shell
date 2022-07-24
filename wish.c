@@ -104,7 +104,7 @@ void execute_cmd(int argc, char* argv[], char* PATH[], char *buff_begin)
     }
     fprintf(stderr, "No such command %s found in PATH\n", argv[0]);
 
-    free_allocated(PATH, buff_begin);
+    //free_allocated(PATH, buff_begin);
     exit(0);
   } 
   else if(child_proccess > 0)
@@ -135,6 +135,9 @@ int main(int argc, char *argv[]) {
   PATH[0] = "";
   PATH[1] = NULL;
 
+  FILE* OUTPUT = stdout;
+  //
+
   if(argc == INTERACTIVE_MODE)   // Interactive mode -> 1
   {
     while(1)
@@ -149,6 +152,8 @@ int main(int argc, char *argv[]) {
       for(int i = 0; i < input_sz; ++i)
         if(input[i] == '\t')
           input[i] = ' ';
+
+      // Checking
 
       // Parsing input // 
       parse_token = input;
@@ -165,7 +170,9 @@ int main(int argc, char *argv[]) {
       {
         execute_cmd(argsc, argsv, PATH, input);
       }
+      
       free(input);
+      input = NULL;
     }
   }
   else if(argc == BATCH_MODE)  // Batch mode -> 2
@@ -203,7 +210,9 @@ int main(int argc, char *argv[]) {
       {
         execute_cmd(argsc, argsv, PATH, input);
       }
+
       free(input);
+      input = NULL;
     }
 
     fclose(file);
