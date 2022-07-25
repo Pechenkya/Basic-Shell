@@ -6,7 +6,7 @@
 This shell is part of course "Introduction to OS: Part 1" by Codio. 
 It's a wrapper for UNIX file system, written with C language.
 
-## Built-in commands
+## Built-In commands
 List of built-in commands that can be executed by default:
 
 1. **exit** -- ends shell execution (no parameters)
@@ -38,7 +38,7 @@ gcc -o wish wish.c
 
 #### REMARKS
 
-1. Build-In commands cannot be run in parallel mode!
+1. Built-In commands cannot be run in parallel mode!
 
 #### ISSUES
 1. Some syntax and command execution problems sometimes (fix needed)
