@@ -6,8 +6,8 @@
 This shell is part of course "Introduction to OS: Part 1" by Codio. 
 It's a wrapper for UNIX file system, written with C language.
 
-## Build-in commands
-List of build-in commands that can be executed by default:
+## Built-in commands
+List of built-in commands that can be executed by default:
 
 1. **exit** -- ends shell execution (no parameters)
 2. **cd** -- changes current direction (exactly 1 parameter)
