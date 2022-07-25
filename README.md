@@ -39,3 +39,4 @@ gcc -o wish wish.c
 #### REMARKS
 
 1. Build-In commands cannot be run in parallel mode!
+2. Some syntax and command execution problems sometimes (fix needed)

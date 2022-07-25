@@ -1,2 +1,8 @@
-cd
+echo hello > out1.txt & echo bye > out2.txt & echo hi > out3.txt
+cat out1.txt
+cat out2.txt
+cat out3.txt
+rm -rf out1.txt
+rm -rf out2.txt
+rm -rf out3.txt
 exit
