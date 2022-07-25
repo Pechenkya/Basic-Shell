@@ -1,7 +1,4 @@
 #include "wish.h"
-#include <ctype.h>  // isspace
-#include <regex.h>  // regcomp, regexec, regfree
-#include <stdio.h>  // fopen, fclose, fileno, getline, feof
 #include <stdlib.h> // exit
 #include <sys/types.h>
 #include <sys/wait.h> // waitpid
@@ -60,7 +57,7 @@ FILE* check_for_redirection(char* input)
     }
 }
 
-int check_and_exec_buildin(int argc, char* argv[], 
+int check_and_exec_builtin(int argc, char* argv[], 
       char* PATH[], FILE* fl, char *buff_begin)
 {
   if(argc == 0)
@@ -184,7 +181,7 @@ int main(int argc, char *argv[]) {
   //
   
   // Parsing stuff
-  short cmd_count = 1;
+  short cmd_count;
   char *parse_token[16];
   parse_token[0] = NULL;
   int argsc[16];
@@ -194,226 +191,118 @@ int main(int argc, char *argv[]) {
 
   // System parameters
   char *PATH[32];
-  PATH[0] = "";
-  PATH[1] = "/bin";
+  PATH[0] = "",    // Current foulder path
+  PATH[1] = "/bin"; // Default execution path
   PATH[2] = NULL;
 
   FILE* OUTPUT[16];
+  FILE* INPUT;
   //
 
-  if(argc == INTERACTIVE_MODE)   // Interactive mode -> 1
+  // Setting up mode //
+  if(argc == INTERACTIVE_MODE) // Interactive mode -> 1
+    INPUT = stdin;
+  else if(argc != BATCH_MODE || !(INPUT = fopen(argv[1], "r"))) // Opening if Batch mode -> 2
   {
-    while(1)
-    {
-      printf("wish> ");
-      input_sz = getline(&input, &len, stdin) - 1;
-      input[input_sz] = '\0';
-
-      // Removing tabulations //
-      for(int i = 0; i < input_sz; ++i)
-        if(input[i] == '\t')
-          input[i] = ' ';
-
-      // Find for first symbol (not whitespace)
-      parse_token[0] = NULL;
-      for(int i = 0; i < input_sz; ++i)
-      {
-        if(input[i] != ' ')
-        {
-          parse_token[0] = &input[i];
-          break;
-        }
-      }
-
-      if(!parse_token[0])
-      {
-        free(input);
-        input = NULL;
-        continue;
-      }
-      //
-      
-      // Count and setup parallel commands
-      argsc[0] = 0;
-      do
-      {
-        parse_token[cmd_count] = strchr(parse_token[cmd_count - 1], '&');
-        if(parse_token[cmd_count] != NULL)
-        {
-          argsc[cmd_count] = 0;
-          parse_token[cmd_count][0] = '\0';
-          parse_token[cmd_count]++;   // Cutting off the token
-          cmd_count++;
-        }
-        else
-          break;
-      } while (1);
-      
-      
-      int bad_parse = 0;
-      for(int i = 0; i < cmd_count; ++i)
-      {
-        // Checking for redirection //
-        OUTPUT[i] = check_for_redirection(parse_token[i]);
-        if(OUTPUT[i] == NULL)    // Error while processing filename or command
-        { 
-          OUTPUT[i] = stdout;
-          bad_parse = 1;
-          break;
-        }
-
-        // Parsing input // 
-        do
-        {
-          arg_buff = strsep(&parse_token[i], " ");
-          if(arg_buff == NULL || strcmp(arg_buff, ""))
-            argsv[i][argsc[i]++] = arg_buff;
-        } while (argsc[i] == 0 || argsv[i][argsc[i] - 1] != NULL);
-        argsc[i]--;  // NULL is not a parameter
-      }
-      
-      if(bad_parse)
-      {
-        print_error();
-        free(input);
-        input = NULL;
-        continue;
-      }
-      
-      // Executing commant and free input //
-      if(!check_and_exec_buildin(argsc[0], argsv[0], PATH, NULL, input))
-      {
-        execute_cmd(cmd_count, argsv, PATH, OUTPUT, input);
-      }
-      
-      // Clearing data
-      for(int i = 0; i < cmd_count; ++i)
-      {
-        if(OUTPUT[i] != stdout)
-        {
-            fclose(OUTPUT[i]);
-            OUTPUT[i] = stdout;
-        }
-      }
-      cmd_count = 1;
-      free(input);
-      input = NULL;
-    }
-  }
-  else if(argc == BATCH_MODE)  // Batch mode -> 2
-  {
-    FILE* file = fopen(argv[1], "r");
-    if(!file)
-    {
-      print_error();
-      exit(1);
-    }
-
-    while(!feof(file))
-    {
-      input_sz = getline(&input, &len, file);
-      // Empty line handling //
-      if(input_sz == -1)
-        continue;
-
-      // Removing tabulations //
-      for(int i = 0; i < input_sz; ++i)
-        if(input[i] == '\t' || input[i] == '\n')
-          input[i] = ' ';
-
-      // Find for first symbol (not whitespace)
-      parse_token[0] = NULL;
-      for(int i = 0; i < input_sz; ++i)
-      {
-        if(input[i] != ' ')
-        {
-          parse_token[0] = &input[i];
-          break;
-        }
-      }
-
-      if(!parse_token[0])
-      {
-        free(input);
-        input = NULL;
-        continue;
-      }
-      //
-
-      // Count and setup parallel commands
-      argsc[0] = 0;
-      do
-      {
-        parse_token[cmd_count] = strchr(parse_token[cmd_count - 1], '&');
-        if(parse_token[cmd_count] != NULL)
-        {
-          argsc[cmd_count] = 0;
-          parse_token[cmd_count][0] = '\0';
-          parse_token[cmd_count]++;   // Cutting off the token
-          cmd_count++;
-        }
-        else
-          break;
-      } while (1);
-      
-      
-      int bad_parse = 0;
-      for(int i = 0; i < cmd_count; ++i)
-      {
-        // Checking for redirection //
-        OUTPUT[i] = check_for_redirection(parse_token[i]);
-        if(OUTPUT[i] == NULL)    // Error while processing filename or command
-        { 
-          OUTPUT[i] = stdout;
-          bad_parse = 1;
-          break;
-        }
-
-        // Parsing input // 
-        do
-        {
-          arg_buff = strsep(&parse_token[i], " ");
-          if(arg_buff == NULL || strcmp(arg_buff, ""))
-          argsv[i][argsc[i]++] = arg_buff;
-        } while (argsc[i] == 0 || argsv[i][argsc[i] - 1] != NULL);
-        argsc[i]--;  // NULL is not a parameter
-      }
-
-      if(bad_parse)
-      {
-        print_error();
-        free(input);
-        input = NULL;
-        continue;
-      }
-
-      // Executing commant and free input //
-      if(!check_and_exec_buildin(argsc[0], argsv[0], PATH, file, input))
-      {
-        execute_cmd(cmd_count, argsv, PATH, OUTPUT, input);
-      }
-
-      // Clearing data
-      for(int i = 0; i < cmd_count; ++i)
-      {
-        if(OUTPUT[i] != stdout)
-        {
-            fclose(OUTPUT[i]);
-            OUTPUT[i] = stdout;
-        }
-      }
-      cmd_count = 1;
-      free(input);
-      input = NULL;
-    }
-    clear_path(PATH);
-    fclose(file);
-  }
-  else
-  {
-    print_error();
+    print_error();  // Too much parameters on problem on opening file
     exit(1);
   }
+  //
+
+  // Infinite loop, while file ends (stdin never ends) or exit found
+  while(!feof(INPUT))
+  {
+    if(argc == INTERACTIVE_MODE)
+      printf("wish> ");
+    
+    input_sz = getline(&input, &len, INPUT);
+    // Empty line handling //
+    if(input_sz <= 0)
+      continue;
+    
+    // Removing tabulations and endline //
+    if(input[input_sz - 1] == '\n')
+      input[--input_sz] = '\0';
+
+    for(int i = 0; i < input_sz; ++i)
+      if(input[i] == '\t')
+        input[i] = ' ';
+
+    // Find for first symbol (not whitespace), if not found -- skip input
+    parse_token[0] = NULL;
+    for(int i = 0; i < input_sz && !parse_token[0]; ++i)
+      if(input[i] != ' ')
+        parse_token[0] = &input[i];
+
+    if(!parse_token[0])
+    {
+      free(input);
+      input = NULL;
+      continue;
+    }
+
+    // Count and setup parallel commands
+    cmd_count = 1;
+    while (1)
+    {
+      parse_token[cmd_count] = strchr(parse_token[cmd_count - 1], '&');
+      if(parse_token[cmd_count] != NULL)
+      {
+        argsc[cmd_count] = 0;
+        parse_token[cmd_count][0] = '\0';
+        parse_token[cmd_count]++;         // Cutting off the token
+        cmd_count++;                      // Increasing commands count
+      }
+      else
+        break;  // Got NULL -> no position -> end loop
+    }
+    
+    // Parse all of found parallel commands //
+    int bad_parse = 0;
+    for(int i = 0; i < cmd_count; ++i)
+    {
+      // Checking for redirection //
+      OUTPUT[i] = check_for_redirection(parse_token[i]);
+      if(OUTPUT[i] == NULL)    // Error while processing filename or command
+      {
+        bad_parse = 1;
+        break;
+      }
+
+      // Parsing input //
+      argsc[i] = 0;
+      do
+      {
+        arg_buff = strsep(&parse_token[i], " ");
+        if(arg_buff == NULL || arg_buff[0] != '\0')               // Skip all empty strings
+          argsv[i][argsc[i]++] = arg_buff;
+      } while (argsc[i] == 0 || argsv[i][argsc[i] - 1] != NULL);  // Find end of parsing token (Segm fault prevented)
+      argsc[i]--;  // NULL is not a parameter
+    }
+
+    // Executing commant and free input // (if parsed succesfully)
+    if(!bad_parse)
+    {
+      if(!check_and_exec_builtin(argsc[0], argsv[0], PATH, INPUT, input)) // Built-In commands
+      {
+        execute_cmd(cmd_count, argsv, PATH, OUTPUT, input);               // Other commands
+      }
+    }
+    else
+      print_error();    // Print bad parse error
+
+    // Clearing data
+    for(int i = 0; i < cmd_count; ++i)
+      if(OUTPUT[i] != stdout)
+        fclose(OUTPUT[i]);
+    
+    free(input);
+    input = NULL;
+  }
+
+  clear_path(PATH);
+  if(INPUT != stdin)
+    fclose(INPUT);
 
   return 0;
 }
