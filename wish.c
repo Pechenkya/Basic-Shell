@@ -64,7 +64,7 @@ int check_and_exec_builtin(int argc, char* argv[],
       fprintf(stderr, "Error (exit): exit must have no parameters\n");
     else
     {
-      if(fl != NULL)
+      if(fl != stdin)
         fclose(fl);
 
       free_allocated(PATH, buff_begin);
