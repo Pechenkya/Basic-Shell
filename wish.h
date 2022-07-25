@@ -13,9 +13,6 @@
 #define INTERACTIVE_MODE 1
 #define BATCH_MODE 2
 
-// Print default error -- could be modified
-void print_error();
-
 // Clear current PATH array
 void clear_path(char* PATH[]);
 

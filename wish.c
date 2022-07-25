@@ -3,12 +3,6 @@
 #include <sys/types.h>
 #include <sys/wait.h> // waitpid
 
-void print_error()
-{
-  char error_message[30] = "An error has occurred\n";
-  write(STDERR_FILENO, error_message, strlen(error_message)); 
-}
-
 void clear_path(char* PATH[])
 {
   for(int i = 2; PATH[i] != NULL; ++i)
@@ -67,7 +61,7 @@ int check_and_exec_builtin(int argc, char* argv[],
   if(!strcmp(argv[0], "exit"))
   {
     if(argc > 1)
-      print_error();
+      fprintf(stderr, "Error (exit): exit must have no parameters\n");
     else
     {
       if(fl != NULL)
@@ -82,9 +76,9 @@ int check_and_exec_builtin(int argc, char* argv[],
   else if(!strcmp(argv[0], "cd"))
   {
     if(argc != 2)
-      print_error();
+      fprintf(stderr, "Error (cd): cd must have exacly one parameter\n");
     else if(chdir(argv[1]))
-      print_error();
+      fprintf(stderr, "Error (cd): no such folder found (%s)\n", argv[1]);
     
     return 1;
   }
@@ -152,7 +146,7 @@ void execute_cmd(short cmd_count, char* argv[16][64],
             execv(dest, argv[i]);
           //
         }
-        print_error();
+        fprintf(stderr, "Error: no such command found (%s) in PATH\n", argv[i][0]);
 
         free_allocated(PATH, buff_begin);
         exit(0);
@@ -163,7 +157,7 @@ void execute_cmd(short cmd_count, char* argv[16][64],
     }
     else
     {
-      print_error();
+      fprintf(stderr, "Error: problem staring new thred\n");
     }
   }
   
@@ -204,7 +198,7 @@ int main(int argc, char *argv[]) {
     INPUT = stdin;
   else if(argc != BATCH_MODE || !(INPUT = fopen(argv[1], "r"))) // Opening if Batch mode -> 2
   {
-    print_error();  // Too much parameters on problem on opening file
+    fprintf(stderr, "Error: can't open batch file");  // Too much parameters or problem on opening file
     exit(1);
   }
   //
@@ -261,6 +255,10 @@ int main(int argc, char *argv[]) {
     int bad_parse = 0;
     for(int i = 0; i < cmd_count; ++i)
     {
+      // First no-spase char //
+      while(parse_token[i][0] == ' ')
+        parse_token[i]++;
+        
       // Checking for redirection //
       OUTPUT[i] = check_for_redirection(parse_token[i]);
       if(OUTPUT[i] == NULL)    // Error while processing filename or command
@@ -289,11 +287,11 @@ int main(int argc, char *argv[]) {
       }
     }
     else
-      print_error();    // Print bad parse error
+      fprintf(stderr, "Error: problem while parsing input\n");    // Print bad parse error
 
     // Clearing data
     for(int i = 0; i < cmd_count; ++i)
-      if(OUTPUT[i] != stdout)
+      if(OUTPUT[i] && OUTPUT[i] != stdout)
         fclose(OUTPUT[i]);
     
     free(input);
