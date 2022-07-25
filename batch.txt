@@ -1,5 +1,4 @@
+&
+echo hello
+exit
 
-path /usr/bin /bin
-echo hello > output.txt & echo bye
-
-exit asljgsd saglh

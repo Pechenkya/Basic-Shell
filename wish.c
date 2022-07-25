@@ -59,6 +59,9 @@ FILE* check_for_redirection(char* input)
 int check_and_exec_buildin(int argc, char* argv[], 
       char* PATH[], FILE* fl, char *buff_begin)
 {
+  if(argc == 0)
+    return 0;
+
   // Check if 'exit' command -- then exit //
   if(!strcmp(argv[0], "exit"))
   {
@@ -117,6 +120,12 @@ void execute_cmd(short cmd_count, char* argv[16][64],
     if((pid = fork()) == 0)
     {
         // Executing process on new thread
+        if(argv[i][0] == NULL)
+        {
+          free_allocated(PATH, buff_begin);
+          exit(0);
+        }
+
         // Redirecting output if needed
         if(OUTPUT[i] != stdout)
         {
@@ -149,7 +158,7 @@ void execute_cmd(short cmd_count, char* argv[16][64],
     } 
     else if(pid > 0)
     {
-       continue;
+      continue;
     }
     else
     {
@@ -260,13 +269,6 @@ int main(int argc, char *argv[]) {
           if(arg_buff == NULL || strcmp(arg_buff, ""))
             argsv[i][argsc[i]++] = arg_buff;
         } while (argsc[i] == 0 || argsv[i][argsc[i] - 1] != NULL);
-
-        // Empty args == no commands
-        if(argsv[i][0] == NULL)
-        {
-          bad_parse = 1;
-          break;
-        }
         argsc[i]--;  // NULL is not a parameter
       }
       
@@ -303,14 +305,15 @@ int main(int argc, char *argv[]) {
     FILE* file = fopen(argv[1], "r");
     if(!file)
     {
+      print_error();
       exit(1);
     }
 
     while(!feof(file))
     {
-      input_sz = getline(&input, &len, file) - 1;
+      input_sz = getline(&input, &len, file);
       // Empty line handling //
-      if(input_sz == -1 || input[0] == '\n')
+      if(input_sz == -1)
         continue;
 
       // Removing tabulations //
@@ -373,14 +376,6 @@ int main(int argc, char *argv[]) {
           if(arg_buff == NULL || strcmp(arg_buff, ""))
           argsv[i][argsc[i]++] = arg_buff;
         } while (argsc[i] == 0 || argsv[i][argsc[i] - 1] != NULL);
-
-        // Empty args == no commands
-        if(argsv[i][0] == NULL)
-        {
-          bad_parse = 1;
-          break;
-        }
-
         argsc[i]--;  // NULL is not a parameter
       }
 
@@ -416,6 +411,7 @@ int main(int argc, char *argv[]) {
   }
   else
   {
+    print_error();
     exit(1);
   }
 
