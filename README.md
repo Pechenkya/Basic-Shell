@@ -42,4 +42,4 @@ gcc -o wish wish.c
 
 #### ISSUES
 1. Some syntax and command execution problems sometimes (fix needed)
-2. Code refactoring needed (add some space optimization and clarification)
+2. **DONE** ~~Code refactoring needed (add some space optimization and clarification)~~
