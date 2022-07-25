@@ -36,6 +36,10 @@ FILE* check_for_redirection(char* input)
     {
       return stdout;
     }
+    else if(red_begin == input)
+    {
+      return NULL; // Bad command parse -> no output
+    }
     else
     {
       *red_begin = '\0';
@@ -203,10 +207,6 @@ int main(int argc, char *argv[]) {
     {
       printf("wish> ");
       input_sz = getline(&input, &len, stdin) - 1;
-
-      // Empty line handling //
-      if(input[0] == '\n')
-        continue;
       input[input_sz] = '\0';
 
       // Removing tabulations //
@@ -254,8 +254,8 @@ int main(int argc, char *argv[]) {
       for(int i = 0; i < cmd_count; ++i)
       {
         // Checking for redirection //
-        OUTPUT[i] = check_for_redirection(input);
-        if(OUTPUT[i] == NULL)    // Error while processing filename
+        OUTPUT[i] = check_for_redirection(parse_token[i]);
+        if(OUTPUT[i] == NULL)    // Error while processing filename or command
         { 
           OUTPUT[i] = stdout;
           bad_parse = 1;
@@ -361,8 +361,8 @@ int main(int argc, char *argv[]) {
       for(int i = 0; i < cmd_count; ++i)
       {
         // Checking for redirection //
-        OUTPUT[i] = check_for_redirection(input);
-        if(OUTPUT[i] == NULL)    // Error while processing filename
+        OUTPUT[i] = check_for_redirection(parse_token[i]);
+        if(OUTPUT[i] == NULL)    // Error while processing filename or command
         { 
           OUTPUT[i] = stdout;
           bad_parse = 1;

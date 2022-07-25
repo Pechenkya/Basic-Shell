@@ -1,4 +1,2 @@
-&
-echo hello
+cd
 exit
-
